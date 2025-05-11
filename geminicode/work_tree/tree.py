@@ -2,42 +2,56 @@ import os
 import sqlite3
 import time
 from geminicode.utils.files import get_git_ignore_file_content, read_file
+
+# Corrected DB_SCHEMA (removed trailing comma)
 DB_SCHEMA = """
     CREATE TABLE IF NOT EXISTS project_files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         path TEXT UNIQUE NOT NULL,
         last_modified REAL NOT NULL,
-        content TEXT NOT NULL,
+        content TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_path ON project_files (path);
-    """
+"""
+
 class WorkTree:
     def __init__(self, ctx):
         self.ctx = ctx
-        self.seperator = "====="
+        self.seperator = "=====" # This might be for the old text file format, can be removed if not used
         self.recently_changed_files = {}
+        self.project_index_file_path = self.set_project_index_file_path_name('project_index.txt')[1]
+        print(self.project_index_file_path)
+        self.DB_SCHEMA = DB_SCHEMA # Assign class attribute to instance for clarity if needed or use WorkTree.DB_SCHEMA
 
         # all ran on init
-        self.set_project_index_file_path()
+        self.set_project_index_file_path_name('project_index.db')
         self.add_git_ignore_files()
-        self.write_project_index()
+        self._init_db()
+        self.save_project_db()
+        self.save_project_index_file()
 
-    def set_project_index_file_path(self):
+    def set_project_index_file_path_name(self, name):
         base_dir = '/tmp'
         project_name = os.path.basename(self.ctx.cwd)
-        self.project_index_path = os.path.join(base_dir, project_name)
-        print('Project index file path:', self.project_index_path)
+        directory = os.path.join(base_dir, project_name)
+        file_path = os.path.join(directory, name)
+        return [directory, file_path]
 
     def add_git_ignore_files(self):
+        if not hasattr(self.ctx, 'ignored_files') or not isinstance(self.ctx.ignored_files, list):
+            self.ctx.ignored_files = []
         ignored_patterns = get_git_ignore_file_content(self.ctx.cwd)
         if ignored_patterns:
             self.ctx.ignored_files.extend(ignored_patterns)
-    
+     
     def _init_db(self):
-        os.makedirs(self.project_index_path, exist_ok=True)
-        self.conn = sqlite3.connect(self.project_index_path)
+        # Ensure the directory for the database file exists
+        directory, file_path = self.set_project_index_file_path_name('project_index.db')
+        os.makedirs(directory, exist_ok=True)
+        # Connect to the database FILE
+        self.conn = sqlite3.connect(file_path)
         cursor = self.conn.cursor()
-        cursor.executescript(self.DB_SCHEMA)
+        cursor.executescript(self.DB_SCHEMA) # or WorkTree.DB_SCHEMA
         self.conn.commit()
 
     def walk_files(self, start_dir, ignored_files=[]):
@@ -53,10 +67,33 @@ class WorkTree:
     
     def save_project_db(self):
         for file_path in self.walk_files(self.ctx.cwd, self.ctx.ignored_files):
-            content = read_file(file_path).strip()
-            if content:
-                self.conn.execute("INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)", (file_path, content, time.time()))
+            content = read_file(file_path)
+            if content: 
+                try:
+                    self.conn.execute("INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)", 
+                                        (file_path, content, time.time()))
+                except sqlite3.IntegrityError:
+                    print(f"Path {file_path} already exists or another integrity error occurred. Updating instead.")
+                    self.conn.execute("UPDATE project_files SET content = ?, last_modified = ? WHERE path = ?",
+                                        (content, time.time(), file_path))
+        self.conn.commit() # Commit all changes after the loop
 
-    # TODO: ADD LOOP DB TO CREATE THE CACHED FILE
+    # TODO: ADD LOOP DB TO CREATE THE CACHED FILE (This method seems to be for the old text file format)
     def format_project_index_file(self, file_path, content):
         return f"{self.seperator}{file_path}{self.seperator}\n{content}{self.seperator}\nEND{self.seperator}\n"
+
+    def save_project_index_file(self):
+        """Read all entries from the SQLite database and write them to the project index file."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT path, content FROM project_files ORDER BY path")
+            entries = cursor.fetchall()
+            
+            with open(self.project_index_file_path, 'w') as f:
+                for file_path, content in entries:
+                    formatted_entry = self.format_project_index_file(file_path, content)
+                    f.write(formatted_entry)
+                    
+        except Exception as e:
+            print(f"Error saving project index file: {str(e)}")
+            raise

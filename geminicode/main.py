@@ -4,19 +4,45 @@ import sys
 from geminicode.context import Context
 from geminicode.utils.files import read_file, write_file, delete_file, create_file, get_git_ignore_file_content
 from geminicode.work_tree.tree import WorkTree
+from geminicode.gemini.client import AIClient
 
 
 def main():
     try:
         ctx = Context(os.getcwd())
-        print(ctx.cwd)
+        print(f"Initialized in directory: {ctx.cwd}")
         tree = WorkTree(ctx)
+        ai_client = AIClient(tree)
 
+        print("\nWelcome to GeminiCode CLI!")
+        print("Type 'exit' to quit, or enter your query:")
+        
         while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nExiting geminicode CLI.")
-        sys.exit(0)
+            try:
+                # Get user input
+                user_input = input("\n> ").strip()
+                
+                # Check for exit command
+                if user_input.lower() in ['exit', 'quit']:
+                    print("\nExiting GeminiCode CLI.")
+                    break
+                
+                # Skip empty input
+                if not user_input:
+                    continue
+                
+                # Process the query
+                ai_client.add_text_message(user_input)
+                response = ai_client.process_messages()
+                print(f"\n{response}")
+                
+            except KeyboardInterrupt:
+                print("\nExiting GeminiCode CLI.")
+                break
+            except Exception as e:
+                print(f"Error processing query: {e}", file=sys.stderr)
+                continue
+
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
         sys.exit(1)
