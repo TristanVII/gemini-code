@@ -60,6 +60,7 @@ def write_file_tool_handler(work_tree: WorkTree, params: Dict[str, Any]) -> str:
         """, (file_path, content))
         
         work_tree.conn.commit()
+        work_tree.recently_changed_files.add(file_path)
         return f"Successfully wrote content to {file_path}"
             
     except Exception as e:

@@ -22,9 +22,13 @@ def delete_file(file_path):
     os.remove(file_path)
 
 
-def create_file(file_path, content):
-    with open(file_path, 'w') as file:
-        file.write(content)
+def create_file(file_path):
+    try:
+        f = open(file_path, "x")
+    except FileExistsError:
+        print(f"File already exists: {file_path}")
+    except Exception as e:
+        print(f"Error creating file {file_path}: {e}")
 
 def get_git_ignore_file(file_path):
     git_ignore_file = os.path.join(file_path, '.gitignore')

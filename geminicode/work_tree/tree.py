@@ -18,9 +18,8 @@ class WorkTree:
     def __init__(self, ctx):
         self.ctx = ctx
         self.seperator = "=====" # This might be for the old text file format, can be removed if not used
-        self.recently_changed_files = {}
         self.project_index_file_path = self.set_project_index_file_path_name('project_index.txt')[1]
-        print(self.project_index_file_path)
+        self.recently_changed_files = set()
         self.DB_SCHEMA = DB_SCHEMA # Assign class attribute to instance for clarity if needed or use WorkTree.DB_SCHEMA
 
         # all ran on init
@@ -97,3 +96,7 @@ class WorkTree:
         except Exception as e:
             print(f"Error saving project index file: {str(e)}")
             raise
+
+    def get_project_index_file_content(self):
+        with open(self.project_index_file_path, 'r') as f:
+            return f.read()
