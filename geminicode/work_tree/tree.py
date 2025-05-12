@@ -17,7 +17,6 @@ DB_SCHEMA = """
 class WorkTree:
     def __init__(self, ctx):
         self.ctx = ctx
-        self.seperator = "=====" # This might be for the old text file format, can be removed if not used
         self.project_index_file_path = self.set_project_index_file_path_name('project_index.txt')[1]
         self.recently_changed_files = set()
         self.DB_SCHEMA = DB_SCHEMA # Assign class attribute to instance for clarity if needed or use WorkTree.DB_SCHEMA
@@ -79,7 +78,7 @@ class WorkTree:
 
     # TODO: ADD LOOP DB TO CREATE THE CACHED FILE (This method seems to be for the old text file format)
     def format_project_index_file(self, file_path, content):
-        return f"{self.seperator}{file_path}{self.seperator}\n{content}{self.seperator}\nEND{self.seperator}\n"
+        return f'<file path="{file_path}">{content}</file>\n'
 
     def save_project_index_file(self):
         """Read all entries from the SQLite database and write them to the project index file."""

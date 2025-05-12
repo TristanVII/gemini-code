@@ -54,5 +54,7 @@ def create_file_tool_handler(work_tree: WorkTree, params: Dict[str, Any]) -> str
         else:
             return f"Failed to create file: {file_path}"
             
+    except FileExistsError:
+        return f"File already exists: {file_path}"
     except Exception as e:
         return f"Error creating file: {str(e)}"

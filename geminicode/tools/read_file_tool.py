@@ -5,7 +5,7 @@ def read_file_tool() -> Dict[str, Any]:
     """Tool definition for reading file content from the project database."""
     return {
         "name": "read_file",
-        "description": "Read the content of a file from the project database",
+        "description": "Read the content of a file from the project database. Only read file if you are unable to find relevent context about it from the cached context",
         "parameters": {
             "type": "object",
             "properties": {
