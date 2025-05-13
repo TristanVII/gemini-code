@@ -44,9 +44,6 @@ def create_file_tool_handler(work_tree: WorkTree, params: Dict[str, Any]) -> str
         success = create_file(file_path)
         
         if success:
-
-            work_tree.recently_changed_files.add(file_path)
-            # Add the new file to the database
             work_tree.conn.execute(
                 "INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)",
                 (file_path, "", work_tree.last_time_cache_updated)
