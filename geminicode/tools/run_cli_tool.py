@@ -7,7 +7,7 @@ def run_cli_tool() -> Dict[str, Any]:
     """Tool definition for running a CLI command and capturing its output."""
     return {
         "name": "run_cli",
-        "description": "Run a CLI command and return the output.",
+        "description": "Run a CLI command and return the output. IMPORTANT: Always ask permission before running a CLI command. Do not ask to run commands that have a long running time. If you are unsure, ask the user to confirm.",
         "parameters": {
             "type": "object",
             "properties": {

@@ -17,8 +17,6 @@ DB_SCHEMA = """
 class WorkTree:
     def __init__(self, ctx):
         self.ctx = ctx
-        self.project_index_file_path = self.set_project_index_file_path_name('project_index.txt')[1]
-        self.recently_changed_files = set()
         self.DB_SCHEMA = DB_SCHEMA # Assign class attribute to instance for clarity if needed or use WorkTree.DB_SCHEMA
 
         # all ran on init
@@ -26,7 +24,6 @@ class WorkTree:
         self.add_git_ignore_files()
         self._init_db()
         self.save_project_db()
-        self.save_project_index_file()
 
     def set_project_index_file_path_name(self, name):
         base_dir = '/tmp'
@@ -75,27 +72,3 @@ class WorkTree:
                     self.conn.execute("UPDATE project_files SET content = ?, last_modified = ? WHERE path = ?",
                                         (content, time.time(), file_path))
         self.conn.commit() # Commit all changes after the loop
-
-    # TODO: ADD LOOP DB TO CREATE THE CACHED FILE (This method seems to be for the old text file format)
-    def format_project_index_file(self, file_path, content):
-        return f'<file path="{file_path}">{content}</file>\n'
-
-    def save_project_index_file(self):
-        """Read all entries from the SQLite database and write them to the project index file."""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("SELECT path, content FROM project_files ORDER BY path")
-            entries = cursor.fetchall()
-            
-            with open(self.project_index_file_path, 'w') as f:
-                for file_path, content in entries:
-                    formatted_entry = self.format_project_index_file(file_path, content)
-                    f.write(formatted_entry)
-                    
-        except Exception as e:
-            print(f"Error saving project index file: {str(e)}")
-            raise
-
-    def get_project_index_file_content(self):
-        with open(self.project_index_file_path, 'r') as f:
-            return f.read()

@@ -33,8 +33,7 @@ def main():
                 
                 # Process the query
                 ai_client.add_text_message(user_input)
-                response = ai_client.process_messages()
-                print(f"\n{response}")
+                ai_client.process_messages()
                 
             except KeyboardInterrupt:
                 print("\nExiting GeminiCode CLI.")
