@@ -27,3 +27,7 @@ class MessageHandler:
         )
         self.messages.append(model_function_call_content)
         self.messages.append(user_function_response_content)
+    
+    def get_last_message(self):
+        return self.messages[-1]
+        

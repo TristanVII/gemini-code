@@ -34,6 +34,7 @@ def main():
                 # Process the query
                 ai_client.message_handler.add_text_message("user", user_input)
                 ai_client.process_messages()
+                ai_client.reset_max_iterations()
                 print(f"\nToken count for query: {ai_client.message_handler.accumulated_token_count}")
                 ai_client.message_handler.accumulated_token_count = 0
 
