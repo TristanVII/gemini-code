@@ -1,3 +1,1 @@
-- Add tool that access project wide code. Currently always sending it and its bad
-- Allow model to run CLI commands and read output
-- DONT ALWAYS ASK CONFIRMATION
+- fix issue where max iterations hit still cant update NONE tools

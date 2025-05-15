@@ -32,9 +32,11 @@ def main():
                     continue
                 
                 # Process the query
-                ai_client.add_text_message(user_input)
+                ai_client.message_handler.add_text_message("user", user_input)
                 ai_client.process_messages()
-                
+                print(f"\nToken count for query: {ai_client.message_handler.accumulated_token_count}")
+                ai_client.message_handler.accumulated_token_count = 0
+
             except KeyboardInterrupt:
                 print("\nExiting GeminiCode CLI.")
                 break

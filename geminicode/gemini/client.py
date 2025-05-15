@@ -3,6 +3,7 @@ from google.genai import types
 import os
 import datetime
 from typing import Dict, Any, List, Callable
+from geminicode.gemini.messages.message_handler import MessageHandler
 from geminicode.tools.expression_search_tool import expression_search_tool, expression_search_tool_handler
 from geminicode.tools.create_file_tool import create_file_tool, create_file_tool_handler
 from geminicode.tools.read_file_tool import read_file_tool, read_file_tool_handler
@@ -19,6 +20,7 @@ class AIClient:
         self.client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
         self.last_time_cache_updated = None
         self.work_tree = work_tree
+        self.message_handler = MessageHandler()
         
         self.model_name_for_generation = "gemini-2.0-flash"
         self.model_name_for_caching = f"models/{self.model_name_for_generation}"
@@ -43,15 +45,7 @@ class AIClient:
             "expression_search": expression_search_tool_handler
         }
         
-        self.messages = []
-
         # Common ToolConfig for reuse
-        self.common_tool_config = types.ToolConfig(
-            function_calling_config=types.FunctionCallingConfig(
-                mode=types.FunctionCallingConfigMode.AUTO
-            )
-        )
-
         system_prompt_text = system_prompt
 
         system_instruction_as_content = types.Content(parts=[types.Part(text=system_prompt_text)])
@@ -59,62 +53,74 @@ class AIClient:
         for cache in self.client.caches.list():
             self.client.caches.delete(name=cache.name)
 
-        # TODO: COntent caching
+        # Tool config for when tools ARE enabled (usually AUTO)
+        tool_config_for_cache = self.get_tools_config(types.FunctionCallingConfigMode.AUTO)
+
         self.cached_content_obj = self.client.caches.create(
-            model=self.model_name_for_caching,
+            model=self.model_name_for_caching, # Ensure this is the specific model string like "models/gemini-2.0-flash"
             config=types.CreateCachedContentConfig(
                 display_name='geminicode_cache',
                 system_instruction=system_instruction_as_content,
-                tools=self.tools,
-                tool_config=self.common_tool_config,
-                # contents=[],
+                tools=self.tools,  # Embed tools in the cache
+                tool_config=tool_config_for_cache,  # Embed tool_config in the cache
                 ttl='86400s'
             ),
         )
         
-        # Config for generation when using cache: only temperature and cache name
-        self.config = types.GenerateContentConfig(
+        # Config for generation when using cache (tools are enabled via the cache's config)
+        self.generation_config_with_cache = types.GenerateContentConfig(
             temperature=0.2,
-            cached_content=self.cached_content_obj.name,
+            cached_content=self.cached_content_obj.name
+            # DO NOT set tools or tool_config here again, as they are in the cache.
         )
 
-        
-    def add_text_message(self, message: str):
-        self.messages.append(types.Content(
-            role="user",
-            parts=[types.Part(text=message)]
-        ))
+        # Config for generation when tools should be explicitly disabled (and thus, cache isn't used for this call)
+        self.generation_config_no_tools = types.GenerateContentConfig(
+            temperature=0.2,
+            tool_config=self.get_tools_config(types.FunctionCallingConfigMode.NONE)
+            # No cached_content here, as we're overriding tool behavior.
+        )
 
+    def get_tools_config(self, tool_choice: str):
+        return types.ToolConfig(
+            function_calling_config=types.FunctionCallingConfig(
+                mode=tool_choice
+            )
+        )
+        
+    def generate_log_entry(self, timestamp: str, content: str) -> str:
+        return f'<log date="{timestamp}">{content}</log>'
+    
     def process_messages(self, max_iterations: int = 15) -> str:
         """Process a user query with tool support."""
         try:
-            config_for_this_call = self.config
-
+            # Select the appropriate generation configuration
             if max_iterations == 0:
-                config_for_this_call.tool_config.function_calling_config.mode = types.FunctionCallingConfigMode.NONE
+                # When max_iterations is 0, use the config that explicitly disables tools
+                # and does NOT use the cache (since the cache has tools enabled).
+                config_for_this_call = self.generation_config_no_tools
+            else:
+                # Otherwise, use the config that leverages the cache (which has tools enabled).
+                config_for_this_call = self.generation_config_with_cache
             
             response = self.client.models.generate_content(
                 model=self.model_name_for_generation,
-                contents=self.messages,
+                contents=self.message_handler.messages,
                 config=config_for_this_call # Use the appropriately configured object
             )
             
-            print(f"Response: {response}")
+            token_count_cost = response.usage_metadata.total_token_count or 0
+            self.message_handler.accumulated_token_count += token_count_cost
             
             if not response.candidates[0].content.parts:
                 issue = response.candidates[0].finish_reason
-                self.add_text_message(f"Issue: {issue}" + " If fails again with same issue back to back STOP tool calling for this run")
+                self.message_handler.add_text_message(f"Issue: {issue}" + " If fails again with same issue back to back STOP tool calling for this run")
                 return self.process_messages(max_iterations - 1)
 
             for part in response.candidates[0].content.parts:
-                print(f"DEBUG: Part: {part}")
                 if part.text:
-                    text = types.Content(
-                        role="model",
-                        parts=[types.Part(text=part.text)]
-                    )
-                    self.messages.append(text)
-                    print(f'\nGemini: {part.text}\n')
+                    self.message_handler.add_text_message("model", part.text)
+                    print(f'\n\nGemini: {part.text}')
                 elif part.function_call:
                     function_call = part.function_call
                     print(f"Function call: {function_call.name} with args: {json.dumps(function_call.args)}")
@@ -123,29 +129,13 @@ class AIClient:
                     if handler:
                         try:
                             result = handler(self.work_tree, dict(**function_call.args))
-                            print(f"Function {function_call.name} result: {result}")
                         except Exception as e:
                             print(f"Error calling function {function_call.name}: {str(e)}")
-                            return f"Error calling function {function_call.name}: {str(e)}"
+                            result = str(e)
                     else:
-                        return f"Unknown function call: {function_call.name}"
+                        result = f"Unknown function call: {function_call.name}"
 
-                    function_response_part = types.Part.from_function_response(
-                        name=function_call.name,
-                        response={"result": result}
-                    )
-
-                    model_function_call_content = types.Content(
-                        role="model",
-                        parts=[types.Part(function_call=function_call)]
-                    )
-                    user_function_response_content = types.Content(
-                        role="user",
-                        parts=[function_response_part]
-                    )
-                    self.messages.append(model_function_call_content)
-                    self.messages.append(user_function_response_content)
-                    
+                    self.message_handler.add_function_call_with_result(function_call, result)
                     return self.process_messages(max_iterations - 1)
 
         except Exception as e:
