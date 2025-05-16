@@ -7,8 +7,7 @@ def read_file(file_path):
              # Process content
         return content
     except UnicodeDecodeError:
-        print("ayo")
-        # print(f"Skipping file with encoding issues: {file_path}")
+        print(f"Skipping file with encoding issues: {file_path}")
     except Exception as e:
         print(f"Other error processing file {file_path}: {e}")
         return None

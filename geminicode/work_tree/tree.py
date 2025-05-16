@@ -68,6 +68,7 @@ class WorkTree:
                     self.conn.execute("INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)", 
                                         (file_path, content, time.time()))
                 except sqlite3.IntegrityError:
+                    print(f"Path {file_path} already exists or another integrity error occurred. Updating instead.")
                     self.conn.execute("UPDATE project_files SET content = ?, last_modified = ? WHERE path = ?",
                                         (content, time.time(), file_path))
         self.conn.commit() # Commit all changes after the loop
