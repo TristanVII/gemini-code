@@ -23,7 +23,7 @@ class AIClient:
         self.last_time_cache_updated = None
         self.work_tree = work_tree
         self.message_handler = MessageHandler()
-        self.max_iterations = 15
+        self.max_iterations = 30
 
 
         self.model_name_for_generation = "gemini-2.0-flash"
@@ -111,7 +111,7 @@ class AIClient:
                 # Otherwise, use the config that leverages the cache (which has tools enabled).
                 config_for_this_call = self.generation_config_with_cache
             
-            print(f"Iterations left: {self.max_iterations}")
+            # print(f"Iterations left: {self.max_iterations}")
             response = self.client.models.generate_content(
                 model=self.model_name_for_generation,
                 contents=self.message_handler.messages,
@@ -126,7 +126,7 @@ class AIClient:
                 self.message_handler.add_text_message("user", f"Issue: {issue}" + " If fails again with same issue back to back STOP tool calling for this run")
                 return self.process_messages()
 
-            debug_print_response(response)
+            # debug_print_response(response)
 
             return self.handle_response(response)
 
