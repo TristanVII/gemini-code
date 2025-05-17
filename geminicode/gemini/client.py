@@ -3,6 +3,11 @@ from google.genai import types
 import os
 import datetime
 from typing import Dict, Any, List, Callable
+from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.table import Table
+from rich.json import JSON
 from geminicode.gemini.messages.message_handler import MessageHandler
 from geminicode.gemini.schemas import should_continue_schema
 from geminicode.tools.expression_search_tool import expression_search_tool, expression_search_tool_handler
@@ -15,6 +20,7 @@ from geminicode.work_tree.tree import WorkTree
 from geminicode.gemini.system_prompts import system_prompt, should_continue_prompt
 import json
 
+console = Console()
 
 class AIClient:
     def __init__(self, work_tree: WorkTree, ctx):
@@ -145,26 +151,87 @@ class AIClient:
                 self.message_handler.add_text_message("model", part.text)
 
             if self.max_iterations == 0 or not self.should_continue_check():
-                print(f'\n\nGemini: {part.text}')
+                # Format AI response in a panel with safe text handling
+                try:
+                    text_content = str(part.text) if part.text else ""
+                    console.print(Panel(
+                        text_content,
+                        title="[bold magenta]Gemini[/bold magenta]",
+                        border_style="magenta",
+                        expand=False
+                    ))
+                except Exception as e:
+                    console.print(f"[red]Error displaying response: {str(e)}[/red]")
             else:
-                print(f'\n\nGemini: {part.text}')
+                # Format AI response in a panel with safe text handling
+                try:
+                    text_content = str(part.text) if part.text else ""
+                    # sometimes message is none so dont show that
+                    if text_content != "":
+                        console.print(Panel(
+                            text_content,
+                            title="[bold magenta]Gemini[/bold magenta]",
+                            border_style="magenta",
+                            expand=False
+                        ))
+                except Exception as e:
+                    console.print(f"[red]Error displaying response: {str(e)}[/red]")
                 return self.process_messages()
+
             if part.function_call:
                 function_call = part.function_call
-                print(f"Function call: {function_call.name} with args: {
-                      json.dumps(function_call.args)}")
+                
+                try:
+                    # Create a table for function call details
+                    table = Table(title="[bold blue]Tool Call[/bold blue]", border_style="blue", expand=False)
+                    table.add_column("Property", style="cyan")
+                    table.add_column("Value", style="green")
+                    
+                    # Add function name
+                    table.add_row("Function", function_call.name)
+                    
+                    # Add arguments in a formatted way
+                    args_json = json.dumps(function_call.args, indent=2)
+                    table.add_row("Arguments", Syntax(args_json, "json", theme="monokai"))
+                    
+                    console.print(table)
+                except Exception as e:
+                    console.print(f"[red]Error displaying tool call: {str(e)}[/red]")
 
                 handler = self.tool_handlers.get(function_call.name)
                 if handler:
                     try:
-                        result = handler(
-                            self.work_tree, dict(**function_call.args))
+                        result = handler(self.work_tree, dict(**function_call.args))
+                        
+                        # Format the result in a panel with safe text handling
+                        try:
+                            result_text = str(result) if result is not None else ""
+                            console.print(Panel(
+                                result_text,
+                                title=f"[bold green]Tool Result: {function_call.name}[/bold green]",
+                                border_style="green",
+                                expand=False
+                            ))
+                        except Exception as e:
+                            console.print(f"[red]Error displaying result: {str(e)}[/red]")
+                        
                     except Exception as e:
-                        print(f"Error calling function {
-                              function_call.name}: {str(e)}")
+                        error_msg = f"Error calling function {function_call.name}: {str(e)}"
+                        console.print(Panel(
+                            error_msg,
+                            title="[bold red]Tool Error[/bold red]",
+                            border_style="red",
+                            expand=False
+                        ))
                         result = str(e)
                 else:
                     result = f"Unknown function call: {function_call.name}"
+                    console.print(Panel(
+                        result,
+                        title="[bold yellow]Warning[/bold yellow]",
+                        border_style="yellow",
+                        expand=False
+                    ))
 
                 self.message_handler.add_function_call_with_result(
                     function_call, result)
