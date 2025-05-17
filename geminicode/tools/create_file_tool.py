@@ -17,7 +17,7 @@ def create_file_tool() -> Dict[str, Any]:
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "The path where the new file should be created, relative to the project root"
+                    "description": "The FULL PATH where the new file should be created, relative to the project root"
                 }
             },
             "required": ["path"]
@@ -44,11 +44,7 @@ def create_file_tool_handler(work_tree: WorkTree, params: Dict[str, Any]) -> str
         success = create_file(file_path)
         
         if success:
-            work_tree.conn.execute(
-                "INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)",
-                (file_path, "", work_tree.last_time_cache_updated)
-            )
-            work_tree.conn.commit()
+            work_tree.save_to_db(file_path, "")
             return f"Successfully created file: {file_path}"
         else:
             return f"Failed to create file: {file_path}"

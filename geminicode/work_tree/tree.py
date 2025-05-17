@@ -52,21 +52,27 @@ class WorkTree:
     def walk_files(self, start_dir, ignored_files=[]):
         for dirpath, _, filenames in os.walk(start_dir):
             if any(ignored in dirpath for ignored in ignored_files if ignored):
+                print(f"DEBUG: Skipping {dirpath} because it is in the git ignore file")
                 continue
             for filename in filenames:
                 if any(ignored == filename for ignored in ignored_files if ignored):
+                    print(f"DEBUG: Skipping {filename} because it is in the git ignore file")
                     continue
                 if '.' not in filename:
                     continue
                 yield os.path.join(dirpath, filename)
+
+    def save_to_db(self, file_path, content):
+        self.conn.execute("INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)", 
+                                        (file_path, content, time.time()))
+        self.conn.commit()
     
     def save_project_db(self):
         for file_path in self.walk_files(self.ctx.cwd, self.ctx.ignored_files):
             content = read_file(file_path)
-            if content: 
+            if content != None: 
                 try:
-                    self.conn.execute("INSERT INTO project_files (path, content, last_modified) VALUES (?, ?, ?)", 
-                                        (file_path, content, time.time()))
+                    self.save_to_db(file_path, content)
                 except sqlite3.IntegrityError:
                     print(f"Path {file_path} already exists or another integrity error occurred. Updating instead.")
                     self.conn.execute("UPDATE project_files SET content = ?, last_modified = ? WHERE path = ?",

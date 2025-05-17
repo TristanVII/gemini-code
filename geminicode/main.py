@@ -12,7 +12,7 @@ def main():
         ctx = Context(os.getcwd())
         print(f"Initialized in directory: {ctx.cwd}")
         tree = WorkTree(ctx)
-        ai_client = AIClient(tree)
+        ai_client = AIClient(tree, ctx)
 
         print("\nWelcome to GeminiCode CLI!")
         print("Type 'exit' to quit, or enter your query:")
