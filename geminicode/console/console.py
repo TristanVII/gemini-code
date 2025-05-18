@@ -16,13 +16,23 @@ custom_theme = Theme({
     "ai": "magenta",
     "user": "blue",
 })
+# --- ASCII Art Definition ---
+GEMINI_CODE_ART = r"""
+  ██████╗ ███████╗███╗   ███╗██╗███╗   ██╗██╗        ██████╗  ██████╗ ██████╗ ███████╗ 
+ ██╔════╝ ██╔════╝████╗ ████║██║████╗  ██║██║       ██╔════╝ ██╔═══██╗██╔══██╗██╔════╝ 
+ ██║ ███╗███████╗██╔████╔██║██║██╔██╗ ██║ ██║       ██║      ██║   ██║██║  ██║███████╗ 
+ ██║  ██║██╔════╝██║╚██╔╝██║██║██║╚██╗██║ ██║       ██║      ██║   ██║██║  ██║██╔════╝ 
+ ╚██████╔╝███████╗██║ ╚═╝ ██║██║██║ ╚████║██║       ╚██████╗ ╚██████╔╝██████╔╝███████╗ 
+  ╚═════╝ ╚══════╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝        ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝ 
+"""
+
 class ConsoleWrapper(Console):
     def __init__(self):
         super().__init__()
         
     def print_welcome(self):
         self.print(Panel(
-            "\n\nYour AI-powered coding assistant. Press Ctrl+C to exit.\n\n",
+            f"\n\n{GEMINI_CODE_ART}\n\nPress Ctrl+C to exit.\n\n",
             title="[bold cyan]Welcome to GeminiCode CLI![/bold cyan]",
             border_style="cyan",
             expand=False
