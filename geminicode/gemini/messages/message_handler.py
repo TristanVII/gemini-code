@@ -2,8 +2,10 @@ from google.genai import types
 
 
 class MessageHandler:
-    messages = []
-    accumulated_token_count = 0
+    def __init__(self):
+        self.messages = []
+        # set in process_messages
+        self.accumulated_token_count = 0
 
     def add_text_message(self, role: str, message: str):
         self.messages.append(types.Content(
