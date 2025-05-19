@@ -27,6 +27,7 @@ def main():
                 # Check for exit command
                 if user_input.lower() in ['exit', 'quit']:
                     console.print_exit()
+                    ai_client.delete_cache()
                     break
 
                 # Skip empty input
@@ -45,6 +46,7 @@ def main():
 
             except KeyboardInterrupt:
                 console.print("\n[info]Exiting GeminiCode CLI.[/info]")
+                ai_client.delete_cache()
                 break
             except Exception as e:
                 console.print_error(str(e), traceback.format_exc())

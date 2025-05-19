@@ -1,0 +1,4 @@
+- Save memory either before quit or after every chat interaction.
+- Load above memory on start.
+- After every Agent loop, sumamrize the previous messages. Create one message from it. 
+- Add "continuity" step after every agent loop. Where AI can reflect and device next decision. (should stop/show results/should prompt itself/ should call a tool?)

@@ -136,6 +136,10 @@ class AIClient:
             self.message_handler.add_text_message(
                 "user", "Continue with next task")
         return result
+    
+    def delete_cache(self):
+        for cache in self.client.caches.list():
+            self.client.caches.delete(name=cache.name)
 
 
     def initialize(self):
@@ -149,8 +153,7 @@ class AIClient:
         system_instruction_as_content = types.Content(
             parts=[types.Part(text=system_prompt + 'PROJECT FULL PATH: ' + self.ctx.cwd)])
 
-        for cache in self.client.caches.list():
-            self.client.caches.delete(name=cache.name)
+        self.delete_cache()
 
         # Tool config for when tools ARE enabled (usually AUTO)
         tool_config_for_cache = self.get_tools_config(

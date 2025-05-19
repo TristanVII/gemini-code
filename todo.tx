@@ -1,6 +1,0 @@
-- fix issue where max iterations hit still cant update NONE tools
-- Fix debug messages
-- Check why always call the same tools
-- Add summary after every 5 user message
-- Fix case where max iterations is hit ad should continue true
-- Create file error, but actually does success
