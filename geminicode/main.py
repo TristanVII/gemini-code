@@ -25,7 +25,7 @@ def main():
                 user_input = Prompt.ask("\n[user]You[/user]")
 
                 # Check for exit command
-                if user_input.lower() in ['exit', 'quit']:
+                if user_input.lower() in ["exit", "quit"]:
                     console.print_exit()
                     ai_client.delete_cache()
                     break
@@ -39,10 +39,16 @@ def main():
                 ai_client.process_messages()
                 ai_client.reset_max_iterations()
 
+                # 1. Summarize previous messages. IF we have reached a count of > max iterations.
+                # this is an arbitrary limit to prevent the AI from using too much context
+                if len(ai_client.message_handler.messages) > ai_client.max_iterations:
+                    ai_client.summarize_previous_messages()
+                # 2. Create next step decision.
+
                 # Display token count in a nice format
                 console.print_token_count(
-                    ai_client.message_handler.accumulated_token_count)
-
+                    ai_client.message_handler.accumulated_token_count
+                )
 
             except KeyboardInterrupt:
                 console.print("\n[info]Exiting GeminiCode CLI.[/info]")

@@ -5,7 +5,11 @@ import datetime
 from geminicode.gemini.messages.message_handler import MessageHandler
 from geminicode.gemini.schemas import should_continue_schema
 from geminicode.work_tree.tree import WorkTree
-from geminicode.gemini.system_prompts import system_prompt, should_continue_prompt
+from geminicode.gemini.system_prompts import (
+    system_prompt,
+    should_continue_prompt,
+    summarize_previous_messages_prompt,
+)
 import json
 from geminicode.tools.tool_handler import ToolHandler
 from geminicode.console.console import ConsoleWrapper
@@ -13,7 +17,7 @@ from geminicode.console.console import ConsoleWrapper
 
 class AIClient:
     def __init__(self, work_tree: WorkTree, ctx, console: ConsoleWrapper):
-        self.client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         self.tool_handler = ToolHandler()
         self.console = console
         self.last_time_cache_updated = None
@@ -22,17 +26,15 @@ class AIClient:
         self.max_iterations = 30
         self.ctx = ctx
         self.initialize()
-
+        print(self.tool_handler.handlers["list_files"](self.work_tree, {}))
 
     def get_tools_config(self, tool_choice: str):
         return types.ToolConfig(
-            function_calling_config=types.FunctionCallingConfig(
-                mode=tool_choice
-            )
+            function_calling_config=types.FunctionCallingConfig(mode=tool_choice)
         )
 
     def reset_max_iterations(self):
-        self.max_iterations = 15
+        self.max_iterations = 30
 
     def generate_log_entry(self, timestamp: str, content: str) -> str:
         return f'<log date="{timestamp}">{content}</log>'
@@ -54,7 +56,7 @@ class AIClient:
             response = self.client.models.generate_content(
                 model=self.model_name_for_generation,
                 contents=self.message_handler.messages,
-                config=config_for_this_call  # Use the appropriately configured object
+                config=config_for_this_call,  # Use the appropriately configured object
             )
 
             token_count_cost = response.usage_metadata.total_token_count or 0
@@ -62,29 +64,30 @@ class AIClient:
 
             if not response.candidates[0].content.parts:
                 issue = response.candidates[0].finish_reason
-                self.message_handler.add_text_message("user", f"Issue: {issue}" + " If fails again with same issue back to back STOP tool calling for this run")
+                self.message_handler.add_text_message(
+                    "user",
+                    f"Issue: {issue}"
+                    + " If fails again with same issue back to back STOP tool calling for this run",
+                )
                 return self.process_messages()
 
             return self.handle_response(response)
 
         except Exception as e:
             import traceback
-            self.console.print_error(e, "Error processing query", traceback.format_exc())
+
+            self.console.print_error(
+                e, "Error processing query", traceback.format_exc()
+            )
             return f"Error processing query: {str(e)}"
 
     def handle_response(self, response: types.GenerateContentResponse):
         for part in response.candidates[0].content.parts:
             if part.text:
                 self.message_handler.add_text_message("model", part.text)
-
-            if self.max_iterations == 0 or not self.should_continue_check():
-                # Format AI response in a panel with safe text handling
-                if part.text:
-                    text_content = str(part.text)
-                    self.console.print_gemini_message(text_content)
-            else:
-                # Format AI response in a panel with safe text handling
                 self.console.print_gemini_message(part.text)
+
+            if self.max_iterations > 0 and self.should_continue_check():
                 return self.process_messages()
 
             if part.function_call:
@@ -92,25 +95,25 @@ class AIClient:
 
                 self.console.print_tool_call(function_call.name, function_call.args)
                 handler = self.tool_handler.handlers.get(function_call.name)
-                
+
                 if handler:
                     try:
-                        result = handler(
-                            self.work_tree, dict(**function_call.args))
-                        result_text = str(
-                            result) if result is not None else ""
+                        result = handler(self.work_tree, dict(**function_call.args))
+                        result_text = str(result) if result is not None else ""
                         self.console.print_tool_result(result_text)
 
                     except Exception as e:
-                        error_msg = f"Error calling function {
-                            function_call.name}: {str(e)}"
+                        error_msg = (
+                            f"Error calling function {function_call.name}: {str(e)}"
+                        )
                         self.console.print_tool_error(error_msg)
                         result = str(e)
                 else:
                     self.console.print_unknown_function_call(function_call.name)
 
                 self.message_handler.add_function_call_with_result(
-                    function_call, result)
+                    function_call, result
+                )
 
                 return self.process_messages()
 
@@ -119,69 +122,81 @@ class AIClient:
         config.response_schema = should_continue_schema
         config.response_mime_type = "application/json"
         messages = [self.message_handler.get_last_message()]
-        messages.append(types.Content(
-            role='user',
-            parts=[types.Part(text=should_continue_prompt(
-                messages[0].parts[0].text))]
-        ))
+        messages.append(
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part(text=should_continue_prompt(messages[0].parts[0].text))
+                ],
+            )
+        )
         response = self.client.models.generate_content(
-            model=self.model_name_for_generation,
-            contents=messages,
-            config=config
+            model=self.model_name_for_generation, contents=messages, config=config
         )
 
         data = json.loads(response.text)
         result = data.get("should_continue", False)
         if result:
-            self.message_handler.add_text_message(
-                "user", "Continue with next task")
+            self.message_handler.add_text_message("user", "Continue with next task")
         return result
-    
+
     def delete_cache(self):
         for cache in self.client.caches.list():
             self.client.caches.delete(name=cache.name)
 
+    def summarize_previous_messages(self):
+        self.message_handler.add_text_message("user", summarize_previous_messages_prompt)
+        response = self.client.models.generate_content(
+            model=self.model_name_for_generation,
+            # Added prompt to messages
+            contents=self.message_handler.messages,
+            config=self.generation_config_no_tools,
+        )
+        # Clear messages
+        self.message_handler.messages = []
+        self.message_handler.add_text_message("model", response.text)
 
     def initialize(self):
         self.model_name_for_generation = "gemini-2.0-flash"
-        self.model_name_for_caching = f"models/{
-            self.model_name_for_generation}"
+        self.model_name_for_caching = f"models/{self.model_name_for_generation}"
 
-        self.tools = [
-            types.Tool(function_declarations=self.tool_handler.tools)
-        ]
+        self.tools = [types.Tool(function_declarations=self.tool_handler.tools)]
         system_instruction_as_content = types.Content(
-            parts=[types.Part(text=system_prompt + 'PROJECT FULL PATH: ' + self.ctx.cwd)])
+            parts=[
+                types.Part(text=system_prompt + "PROJECT FULL PATH: " + self.ctx.cwd)
+            ]
+        )
 
         self.delete_cache()
 
         # Tool config for when tools ARE enabled (usually AUTO)
         tool_config_for_cache = self.get_tools_config(
-            types.FunctionCallingConfigMode.AUTO)
+            types.FunctionCallingConfigMode.AUTO
+        )
 
         self.cached_content_obj = self.client.caches.create(
             # Ensure this is the specific model string like "models/gemini-2.0-flash"
             model=self.model_name_for_caching,
             config=types.CreateCachedContentConfig(
-                display_name='geminicode_cache',
+                display_name="geminicode_cache",
                 system_instruction=system_instruction_as_content,
                 tools=self.tools,  # Embed tools in the cache
                 tool_config=tool_config_for_cache,  # Embed tool_config in the cache
-                ttl='86400s'
+                ttl="86400s",
             ),
         )
 
         # Config for generation when using cache (tools are enabled via the cache's config)
         self.generation_config_with_cache = types.GenerateContentConfig(
             temperature=0.2,
-            cached_content=self.cached_content_obj.name
+            cached_content=self.cached_content_obj.name,
             # DO NOT set tools or tool_config here again, as they are in the cache.
         )
 
         # Config for generation when tools should be explicitly disabled (and thus, cache isn't used for this call)
         self.generation_config_no_tools = types.GenerateContentConfig(
             temperature=0.2,
-            tool_config=self.get_tools_config(
-                types.FunctionCallingConfigMode.NONE)
+            tool_config=self.get_tools_config(types.FunctionCallingConfigMode.NONE),
             # No cached_content here, as we're overriding tool behavior.
         )
+

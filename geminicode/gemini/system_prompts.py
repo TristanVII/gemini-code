@@ -238,5 +238,34 @@ You should ONLY return `true` if the "Last AI Agent Message" *explicitly and una
 
 ** In Most cases when you are not sure, return False. **
 
+** For simple questions / one-shot prompts/tasts return False. **
+
 IMPORTANT: Answering 'True' will append user message 'Please continue with next task' to the conversation. if that makes NO sense, return False for should_continue.
 """
+
+summarize_previous_messages_prompt = f"""
+Okay Gemini, you just completed a series of interactions as an AI coding agent. Use the full message history (messages and tools) leading up to this point:
+
+**Your Task:**
+Analyze the entire provided conversation history. Based on this, generate a **concise yet comprehensive summary** of all significant tasks you performed, the key outcomes achieved, and the current state of any code, files, or project elements you worked on.
+
+**Purpose of this Summary:**
+This summary is critically important. It will be used as the **primary (and potentially sole) context** for our very next request to you. It needs to equip you (or another instance of you) to seamlessly understand what has already been accomplished and to efficiently continue the work or begin a new, related task without needing to re-process the entire raw history.
+
+**Please ensure the summary includes the following, where applicable:**
+
+1.  **Overall Goal(s):** Briefly state the main objective(s) of the preceding tasks.
+2.  **Key Actions & Tasks Performed:** List the specific actions you took (e.g., "Generated Python script for data processing," "Debugged an error in `module_x.py`," "Refactored function `calculate_total()`," "Wrote unit tests for `user_auth.js`," "Created project file structure").
+3.  **Key Outputs & Artifacts:** Mention any significant files created or modified (with names if possible), code snippets generated, or other tangible outputs. Briefly describe their purpose or key content.
+4.  **Current State & Status:** Describe the state of the project/code at the end of the interaction (e.g., "Feature X is partially implemented," "Script Y is complete and tested," "Documentation Z is a first draft").
+5.  **Important Decisions or Discoveries:** Note any critical decisions made or significant information uncovered during the process.
+6.  **(Optional but helpful) Unresolved Issues or Next Steps Identified:** If any problems remain unsolved or if clear next steps were discussed but not yet actioned, briefly mention them.
+
+**Format & Style:**
+*   **Concise:** Be as brief as possible while still covering all essential information.
+*   **Structured:** Use bullet points, numbered lists, or clear paragraphs for easy parsing.
+*   **Factual & Objective:** Focus on what was done and the results.
+*   **Action-Oriented:** Use verbs that clearly describe your actions.
+*   **Self-Contained:** The summary should make sense on its own without needing the full history (though it's derived from it).
+"""
+
