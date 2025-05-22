@@ -1,7 +1,6 @@
 import google.genai as genai
-from google.genai import types
+from google.genai import types 
 import os
-import datetime
 from geminicode.gemini.messages.message_handler import MessageHandler
 from geminicode.gemini.schemas import should_continue_schema
 from geminicode.work_tree.tree import WorkTree
@@ -13,7 +12,7 @@ from geminicode.gemini.system_prompts import (
 import json
 from geminicode.tools.tool_handler import ToolHandler
 from geminicode.console.console import ConsoleWrapper
-
+from geminicode.gemini_mcp.client import MCPClientHandler
 
 class AIClient:
     def __init__(self, work_tree: WorkTree, ctx, console: ConsoleWrapper):
@@ -23,10 +22,9 @@ class AIClient:
         self.last_time_cache_updated = None
         self.work_tree = work_tree
         self.message_handler = MessageHandler()
+        self.mcp_client = MCPClientHandler()
         self.max_iterations = 30
         self.ctx = ctx
-        self.initialize()
-        print(self.tool_handler.handlers["list_files"](self.work_tree, {}))
 
     def get_tools_config(self, tool_choice: str):
         return types.ToolConfig(
@@ -58,11 +56,13 @@ class AIClient:
                 contents=self.message_handler.messages,
                 config=config_for_this_call,  # Use the appropriately configured object
             )
+            
+            print("Response: ", response)
 
             token_count_cost = response.usage_metadata.total_token_count or 0
             self.message_handler.accumulated_token_count += token_count_cost
 
-            if not response.candidates[0].content.parts:
+            if not response.candidates or not response.candidates[0].content.parts:
                 issue = response.candidates[0].finish_reason
                 self.message_handler.add_text_message(
                     "user",
@@ -156,11 +156,13 @@ class AIClient:
         self.message_handler.messages = []
         self.message_handler.add_text_message("model", response.text)
 
-    def initialize(self):
+    # Call this in main.py
+    async def initialize(self):
+        await self.mcp_client.initialize()
         self.model_name_for_generation = "gemini-2.0-flash"
         self.model_name_for_caching = f"models/{self.model_name_for_generation}"
 
-        self.tools = [types.Tool(function_declarations=self.tool_handler.tools)]
+        self.tools = [types.Tool(function_declarations=self.tool_handler.tools)] + self.mcp_client.list_gemini_tools()
         system_instruction_as_content = types.Content(
             parts=[
                 types.Part(text=system_prompt + "PROJECT FULL PATH: " + self.ctx.cwd)
@@ -175,7 +177,6 @@ class AIClient:
         )
 
         self.cached_content_obj = self.client.caches.create(
-            # Ensure this is the specific model string like "models/gemini-2.0-flash"
             model=self.model_name_for_caching,
             config=types.CreateCachedContentConfig(
                 display_name="geminicode_cache",

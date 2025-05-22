@@ -2,6 +2,7 @@ import os
 import time
 import sys
 import traceback
+import asyncio
 from rich.prompt import Prompt
 from geminicode.context import Context
 from geminicode.work_tree.tree import WorkTree
@@ -9,14 +10,14 @@ from geminicode.gemini.client import AIClient
 from geminicode.console.console import ConsoleWrapper
 
 
-def main():
+async def main():
     console = ConsoleWrapper()
     try:
         ctx = Context(os.getcwd())
         # console.print(f"[info]Initialized in directory:[/info] {ctx.cwd}")
         tree = WorkTree(ctx)
         ai_client = AIClient(tree, ctx, console)
-
+        await ai_client.initialize()
         console.print_welcome()
 
         while True:
@@ -63,5 +64,10 @@ def main():
         sys.exit(1)
 
 
+def run():
+    """Synchronous wrapper for the async main function."""
+    asyncio.run(main())
+
+
 if __name__ == "__main__":
-    main()
+    run()

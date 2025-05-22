@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "geminicode = geminicode.main:main",
+            "geminicode = geminicode.main:run",
         ],
     },
     author="Your Name",  # Consider changing this
