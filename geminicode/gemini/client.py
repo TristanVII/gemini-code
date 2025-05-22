@@ -15,16 +15,17 @@ from geminicode.console.console import ConsoleWrapper
 from geminicode.gemini_mcp.client import MCPClientHandler
 
 class AIClient:
-    def __init__(self, work_tree: WorkTree, ctx, console: ConsoleWrapper):
+    def __init__(self, work_tree: WorkTree, ctx, console: ConsoleWrapper, mcp_client: MCPClientHandler):
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        self.mcp_client = mcp_client
         self.tool_handler = ToolHandler()
         self.console = console
         self.last_time_cache_updated = None
         self.work_tree = work_tree
         self.message_handler = MessageHandler()
-        self.mcp_client = MCPClientHandler()
         self.max_iterations = 30
         self.ctx = ctx
+        self.initialize()
 
     def get_tools_config(self, tool_choice: str):
         return types.ToolConfig(
@@ -37,8 +38,9 @@ class AIClient:
     def generate_log_entry(self, timestamp: str, content: str) -> str:
         return f'<log date="{timestamp}">{content}</log>'
 
-    def process_messages(self) -> str:
+    async def process_messages(self) -> str:
         """Process a user query with tool support."""
+        print("MESSAGES: ", self.message_handler.messages, "\n\n")
         self.max_iterations -= 1
         try:
             # Select the appropriate generation configuration
@@ -56,9 +58,8 @@ class AIClient:
                 contents=self.message_handler.messages,
                 config=config_for_this_call,  # Use the appropriately configured object
             )
+            print("RESPONSE", response, "\n\n")
             
-            print("Response: ", response)
-
             token_count_cost = response.usage_metadata.total_token_count or 0
             self.message_handler.accumulated_token_count += token_count_cost
 
@@ -69,9 +70,9 @@ class AIClient:
                     f"Issue: {issue}"
                     + " If fails again with same issue back to back STOP tool calling for this run",
                 )
-                return self.process_messages()
+                return await self.process_messages()
 
-            return self.handle_response(response)
+            return await self.handle_response(response)
 
         except Exception as e:
             import traceback
@@ -81,14 +82,13 @@ class AIClient:
             )
             return f"Error processing query: {str(e)}"
 
-    def handle_response(self, response: types.GenerateContentResponse):
+    async def handle_response(self, response: types.GenerateContentResponse):
         for part in response.candidates[0].content.parts:
             if part.text:
                 self.message_handler.add_text_message("model", part.text)
                 self.console.print_gemini_message(part.text)
-
-            if self.max_iterations > 0 and self.should_continue_check():
-                return self.process_messages()
+                if not part.function_call and self.max_iterations > 0 and self.should_continue_check():
+                    return await self.process_messages()
 
             if part.function_call:
                 function_call = part.function_call
@@ -99,8 +99,7 @@ class AIClient:
                 if handler:
                     try:
                         result = handler(self.work_tree, dict(**function_call.args))
-                        result_text = str(result) if result is not None else ""
-                        self.console.print_tool_result(result_text)
+                        self.console.print_tool_result(str(result) if result is not None else "")
 
                     except Exception as e:
                         error_msg = (
@@ -108,14 +107,18 @@ class AIClient:
                         )
                         self.console.print_tool_error(error_msg)
                         result = str(e)
+                elif function_call.name in self.mcp_client.tool_name_to_session:
+                    result = await self.mcp_client.call_tool(function_call.name, dict(**function_call.args))
+                    self.console.print_tool_result(str(result) if result is not None else "")
                 else:
                     self.console.print_unknown_function_call(function_call.name)
+                    result = "Error: Unknown function call"
 
                 self.message_handler.add_function_call_with_result(
                     function_call, result
                 )
 
-                return self.process_messages()
+                return await self.process_messages()
 
     def should_continue_check(self):
         config = self.generation_config_no_tools
@@ -157,8 +160,7 @@ class AIClient:
         self.message_handler.add_text_message("model", response.text)
 
     # Call this in main.py
-    async def initialize(self):
-        await self.mcp_client.initialize()
+    def initialize(self):
         self.model_name_for_generation = "gemini-2.0-flash"
         self.model_name_for_caching = f"models/{self.model_name_for_generation}"
 

@@ -5,6 +5,7 @@ import traceback
 import asyncio
 from rich.prompt import Prompt
 from geminicode.context import Context
+from geminicode.gemini_mcp.client import MCPClientHandler
 from geminicode.work_tree.tree import WorkTree
 from geminicode.gemini.client import AIClient
 from geminicode.console.console import ConsoleWrapper
@@ -16,8 +17,9 @@ async def main():
         ctx = Context(os.getcwd())
         # console.print(f"[info]Initialized in directory:[/info] {ctx.cwd}")
         tree = WorkTree(ctx)
-        ai_client = AIClient(tree, ctx, console)
-        await ai_client.initialize()
+        mcp_client = MCPClientHandler()
+        await mcp_client.initialize()
+        ai_client = AIClient(tree, ctx, console, mcp_client)
         console.print_welcome()
 
         while True:
@@ -37,7 +39,7 @@ async def main():
 
                 # Process the query
                 ai_client.message_handler.add_text_message("user", user_input)
-                ai_client.process_messages()
+                await ai_client.process_messages()
                 ai_client.reset_max_iterations()
 
                 # 1. Summarize previous messages. IF we have reached a count of > max iterations.

@@ -147,7 +147,7 @@ class ConsoleWrapper(Console):
         if json_output:
             return json_output
         self.print(Panel(
-            "Exiting GeminiCode CLI!",
+            "Goodbye!",
             title="[bold cyan]Exiting GeminiCode CLI![/bold cyan]",
             border_style="cyan",
             expand=False

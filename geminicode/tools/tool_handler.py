@@ -17,6 +17,7 @@ class ToolHandler:
             "run_cli": run_cli_tool_handler
         }
         
+        
         self.tools = [
             expression_search_tool(),
             create_file_tool(),
