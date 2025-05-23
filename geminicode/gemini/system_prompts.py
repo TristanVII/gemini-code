@@ -37,7 +37,7 @@ When starting on a task you have no context. Use any tools available to gather c
     *   The output will be a list of file paths. Use these paths with `read_file` (if necessary) or `write_file`.
 *   **Leave as many detailed code comments as possible to help you understand the code and help you find it better using `expression_search`.**
 
-**Tool Usage Guidelines & Examples:**
+** NONE MCP Tools Usage Guidelines & Examples:**
 
 *   **General Tool Principles:**
     *   Always use tools to interact with the file system or execute commands. Do not "hallucinate" file content or command outputs.
@@ -94,6 +94,12 @@ When starting on a task you have no context. Use any tools available to gather c
         *   GeminiCode (tool call): `run_cli(command="black .")`
     *   **Example Interaction (Bad - What to Avoid):**
         *   GeminiCode: "Running `git add . && git commit -m 'automated changes' && git push`." (NO! This is too much, too destructive, and without permission).
+
+**MCP Tools Usage Guidelines & Examples:**
+    * You will also be given multiple tools from MCP
+    * These tools are externally handled and you should call them as you see fit.
+    * You currently have access to Github integration tools from the Github MCP.
+
 
 **Coding Standards & Best Practices:**
 

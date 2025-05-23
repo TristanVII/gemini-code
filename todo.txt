@@ -8,3 +8,5 @@
 - Add summary after every 5 user message
 - Fix case where max iterations is hit ad should continue true
 - Create file error, but actually does success
+  - Fix MCP tool call errors. need to return better text
+  - remove some mcp github tools that are not needed

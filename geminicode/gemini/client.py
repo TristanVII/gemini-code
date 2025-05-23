@@ -40,7 +40,6 @@ class AIClient:
 
     async def process_messages(self) -> str:
         """Process a user query with tool support."""
-        print("MESSAGES: ", self.message_handler.messages, "\n\n")
         self.max_iterations -= 1
         try:
             # Select the appropriate generation configuration
@@ -58,7 +57,6 @@ class AIClient:
                 contents=self.message_handler.messages,
                 config=config_for_this_call,  # Use the appropriately configured object
             )
-            print("RESPONSE", response, "\n\n")
             
             token_count_cost = response.usage_metadata.total_token_count or 0
             self.message_handler.accumulated_token_count += token_count_cost
@@ -161,10 +159,10 @@ class AIClient:
 
     # Call this in main.py
     def initialize(self):
-        self.model_name_for_generation = "gemini-2.0-flash"
+        self.model_name_for_generation = "gemini-2.5-flash-preview-05-20"
         self.model_name_for_caching = f"models/{self.model_name_for_generation}"
 
-        self.tools = [types.Tool(function_declarations=self.tool_handler.tools)] + self.mcp_client.list_gemini_tools()
+        self.tools = [types.Tool(function_declarations=self.tool_handler.tools)]
         system_instruction_as_content = types.Content(
             parts=[
                 types.Part(text=system_prompt + "PROJECT FULL PATH: " + self.ctx.cwd)
@@ -183,17 +181,15 @@ class AIClient:
             config=types.CreateCachedContentConfig(
                 display_name="geminicode_cache",
                 system_instruction=system_instruction_as_content,
-                tools=self.tools,  # Embed tools in the cache
-                tool_config=tool_config_for_cache,  # Embed tool_config in the cache
+                tools=self.tools + self.mcp_client.tools,
+                tool_config=tool_config_for_cache,
                 ttl="86400s",
             ),
         )
 
-        # Config for generation when using cache (tools are enabled via the cache's config)
         self.generation_config_with_cache = types.GenerateContentConfig(
             temperature=0.2,
             cached_content=self.cached_content_obj.name,
-            # DO NOT set tools or tool_config here again, as they are in the cache.
         )
 
         # Config for generation when tools should be explicitly disabled (and thus, cache isn't used for this call)
