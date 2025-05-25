@@ -47,3 +47,9 @@ class MCPClientHandler:
         if not session:
             raise RuntimeError("MCP session not initialized")
         return await session.call_tool(name=name, arguments=args)
+    
+    async def cleanup(self):
+        """Cleans up resources managed by the AsyncExitStack."""
+        if self._exit_stack:
+            await self._exit_stack.aclose()
+            self._exit_stack = None

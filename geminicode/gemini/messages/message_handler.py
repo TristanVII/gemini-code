@@ -7,7 +7,7 @@ class MessageHandler:
     def __init__(self, cwd: str):
         self.messages = []
         self.accumulated_token_count = 0
-        self.history_file = f"/tmp/{cwd.split('/')[-1]}.json"
+        self.history_file = f"/tmp/{cwd.split('/')[-1]}/history.json"
         self.load_message_history()
 
     def add_text_message(self, role: str, message: str):

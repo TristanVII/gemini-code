@@ -14,9 +14,10 @@ from geminicode.utils.logger import logger
 from geminicode.config import MAX_MESSAGES_IN_CONTEXT
 
 
-def on_exit(ai_client: AIClient, console: ConsoleWrapper):
+async def on_exit(ai_client: AIClient, console: ConsoleWrapper):
     console.print_exit()
-    asyncio.to_thread(ai_client.delete_cache)
+    ai_client.delete_cache()
+    await ai_client.cfg.mcp_handler.cleanup()
 
 async def _run_cli_loop(ai_client: AIClient, console: ConsoleWrapper):
     """Runs the main CLI interaction loop."""
@@ -25,7 +26,7 @@ async def _run_cli_loop(ai_client: AIClient, console: ConsoleWrapper):
             user_input = Prompt.ask("\n[user]You[/user]")
 
             if user_input.lower() in ["exit", "quit"]:
-                on_exit(ai_client, console)
+                await on_exit(ai_client, console)
                 break
 
             if not user_input:
@@ -44,9 +45,6 @@ async def _run_cli_loop(ai_client: AIClient, console: ConsoleWrapper):
                 ai_client.message_handler.accumulated_token_count
             )
 
-        except KeyboardInterrupt:
-            on_exit(ai_client, console)
-            break
         except Exception as e:
             logger.error(f"An error occurred during CLI loop: {e}", exc_info=True)
             console.print_error(str(e), traceback.format_exc())
@@ -63,22 +61,13 @@ async def get_ai_client():
 
 async def main():
     console = ConsoleWrapper()
-    try:
-        ai_client = await get_ai_client()
-        console.print_welcome()
+    ai_client = await get_ai_client()
+    console.print_welcome()
 
-        await _run_cli_loop(ai_client, console)
-        sys.exit(0)
-
-    except Exception as e:
-        logger.error(f"An unhandled error occurred: {e}", exc_info=True)
-        console.print_error(str(e), traceback.format_exc())
-        sys.exit(1)
-        
+    await _run_cli_loop(ai_client, console)
 
 
 def run():
-    """Synchronous wrapper for the async main function."""
     asyncio.run(main())
 
 

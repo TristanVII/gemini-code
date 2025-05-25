@@ -52,10 +52,10 @@ class AIClient:
                 tool_config=self.cfg.get_tools_config(
                     types.FunctionCallingConfigMode.AUTO
                 ),
-                ttl="86400s",
+                # TODO: MAKE CONFIGURABLE
+                ttl="3600s",
             ),
         )
-
         # Cached config for ai. Includes Full system prompt, tools/MCP.
         self.generation_config_with_cache = types.GenerateContentConfig(
             temperature=self.cfg.temperature,
@@ -96,6 +96,7 @@ class AIClient:
             else:
                 config_for_this_call = self.generation_config_with_cache
 
+            print("DEBUG: ", self.message_handler.messages)
             response = self.client.models.generate_content(
                 model=self.cfg.model,
                 contents=self.message_handler.messages,
@@ -132,7 +133,7 @@ class AIClient:
             if part.text:
                 await self.handle_part_text(part.text, thinking)
 
-            if part.function_call or (self.max_iterations > 0 and self.should_continue_check()):
+            if part.function_call or (not thinking and self.max_iterations > 0 and self.should_continue_check()):
                 return await self.process_messages()
 
 

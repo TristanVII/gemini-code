@@ -14,4 +14,4 @@ pip install .
 geminicode
 ```
 
-Press `Ctrl+C` to exit. 
+'exit' to quit.
