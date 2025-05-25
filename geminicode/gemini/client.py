@@ -66,7 +66,8 @@ class AIClient:
             )
         )
 
-        self.generation_config_no_tools = types.GenerateContentConfig(
+    def get_config_no_tools(self):
+        return types.GenerateContentConfig(
             temperature=self.cfg.temperature,
             tool_config=self.cfg.get_tools_config(types.FunctionCallingConfigMode.NONE),
         )
@@ -92,11 +93,10 @@ class AIClient:
         self.max_iterations -= 1
         try:
             if self.max_iterations == 0:
-                config_for_this_call = self.generation_config_no_tools
+                config_for_this_call = self.get_config_no_tools()
             else:
                 config_for_this_call = self.generation_config_with_cache
 
-            print("DEBUG: ", self.message_handler.messages)
             response = self.client.models.generate_content(
                 model=self.cfg.model,
                 contents=self.message_handler.messages,
@@ -175,7 +175,7 @@ class AIClient:
         self.console.print_gemini_message(part, thinking)
     
     def should_continue_check(self):
-        config = self.generation_config_no_tools
+        config = self.get_config_no_tools()
         config.response_schema = should_continue_schema
         config.response_mime_type = "application/json"
         messages = [self.message_handler.get_last_message()]
@@ -209,7 +209,7 @@ class AIClient:
             model=self.cfg.model,
             # Added prompt to messages
             contents=self.message_handler.messages,
-            config=self.generation_config_no_tools,
+            config=self.get_config_no_tools(),
         )
         # Clear messages
         self.message_handler.messages = []

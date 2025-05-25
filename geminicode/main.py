@@ -11,7 +11,7 @@ from geminicode.work_tree.tree import WorkTree
 from geminicode.gemini.client import AIClient
 from geminicode.console.console import ConsoleWrapper
 from geminicode.utils.logger import logger
-from geminicode.config import MAX_MESSAGES_IN_CONTEXT
+from geminicode.config import GEMINI_MODEL_2_0_FLASH, GEMINI_MODEL_2_5_FLASH_PREVIEW_05_20, MAX_MESSAGES_IN_CONTEXT
 
 
 async def on_exit(ai_client: AIClient, console: ConsoleWrapper):
@@ -55,7 +55,7 @@ async def get_ai_client():
     mcp_client = MCPClientHandler()
     await mcp_client.initialize()
     
-    ai_config = GeminiConfig(model="gemini-2.5-flash-preview-05-20", work_tree=WorkTree(ctx), ctx=ctx, mcp_handler=mcp_client, tool_handler=ToolHandler())
+    ai_config = GeminiConfig(model=GEMINI_MODEL_2_5_FLASH_PREVIEW_05_20, work_tree=WorkTree(ctx), ctx=ctx, mcp_handler=mcp_client, tool_handler=ToolHandler())
     ai_client = AIClient(ai_config)
     return ai_client
 

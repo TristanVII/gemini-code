@@ -14,3 +14,7 @@ EXIT_MESSAGE = "Exiting GeminiCode CLI."
 
 # Info message for KeyboardInterrupt
 KEYBOARD_INTERRUPT_MESSAGE = "Exiting GeminiCode CLI."
+
+GEMINI_MODEL_2_5_FLASH_PREVIEW_05_20 = "gemini-2.5-flash-preview-05-20"
+
+GEMINI_MODEL_2_0_FLASH = "gemini-2.0-flash"

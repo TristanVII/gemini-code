@@ -55,11 +55,9 @@ class WorkTree:
     def walk_files(self, start_dir, ignored_files=[]):
         for dirpath, _, filenames in os.walk(start_dir):
             if any(ignored in dirpath for ignored in ignored_files if ignored):
-                # print(f"DEBUG: Skipping {dirpath} because it is in the git ignore file")
                 continue
             for filename in filenames:
                 if any(ignored == filename for ignored in ignored_files if ignored):
-                    # print(f"DEBUG: Skipping {filename} because it is in the git ignore file")
                     continue
                 if '.' not in filename:
                     continue
