@@ -75,33 +75,53 @@ class ConsoleWrapper(Console):
             )
         )
 
-    def print_gemini_message(self, text):
+    def print_gemini_message(self, text, thinking):
         if not text:
             return
-        json_output = self._get_json_output({"message": text}, "gemini_message")
+        json_output = self._get_json_output({"message": text, "thinking": thinking}, "gemini_message")
         if json_output:
             return json_output
-        self.print(
-            Panel(
-                text,
-                title="[bold magenta]Gemini[/bold magenta]",
-                border_style="magenta",
-                expand=False,
+        if thinking:
+            self.print(
+                Panel(
+                    f"[bold green]Thinking:[/bold green] {text}",
+                    title="[bold green]Gemini[/bold green]",
+                    border_style="green",
+                    expand=False,
+                )
             )
-        )
+        else:
+            self.print( 
+                Panel(
+                    text,
+                            title="[bold magenta]Gemini[/bold magenta]",
+                        border_style="magenta",
+                        expand=False,
+                    )
+                )
 
-    def print_tool_result(self, result):
-        json_output = self._get_json_output({"result": result}, "tool_result")
+    def print_tool_result(self, result, thinking):
+        json_output = self._get_json_output({"result": result, "thinking": thinking}, "tool_result")
         if json_output:
             return json_output
-        self.print(
-            Panel(
-                result,
-                title="[bold green]Tool Result[/bold green]",
-                border_style="green",
-                expand=False,
+        if thinking:
+            self.print(
+                Panel(
+                    f"[bold green]Thinking:[/bold green] {result}",
+                    title="[bold green]Tool Result[/bold green]",
+                    border_style="green",
+                    expand=False,
+                )
             )
-        )
+        else:
+            self.print(
+                Panel(
+                    result,
+                    title="[bold green]Tool Result[/bold green]",
+                    border_style="green",
+                    expand=False,
+                )
+            )
         
     def print_unknown_function_call(self, name):
         json_output = self._get_json_output({"function": name}, "unknown_function")

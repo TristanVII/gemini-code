@@ -1,5 +1,4 @@
 from mcp import ClientSession, StdioServerParameters
-from google.genai import _mcp_utils 
 from mcp.client.stdio import stdio_client
 from .github import GITHUB_SERVER_PARAMS
 from typing import List, Dict
@@ -48,6 +47,3 @@ class MCPClientHandler:
         if not session:
             raise RuntimeError("MCP session not initialized")
         return await session.call_tool(name=name, arguments=args)
-
-    def list_gemini_tools(self):
-        return _mcp_utils.mcp_to_gemini_tools(self.tools)
